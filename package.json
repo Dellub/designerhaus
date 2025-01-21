@@ -8,6 +8,7 @@
 		"format": "biome format --write ./"
 	},
 	"devDependencies": {
+    "@repo/typescript-config": "workspace:*",
 		"@biomejs/biome": "^1.9.4",
 		"turbo": "^2.3.3",
 		"typescript": "5.5.4"
