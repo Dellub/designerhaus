@@ -1,20 +1,21 @@
 {
-	"name": "designerhaus",
-	"private": true,
-	"scripts": {
-		"build": "turbo build",
-		"dev": "turbo dev",
-		"lint": "turbo lint",
-		"format": "biome format --write ./"
-	},
-	"devDependencies": {
-    "@repo/typescript-config": "workspace:*",
-		"@biomejs/biome": "^1.9.4",
-		"turbo": "^2.3.3",
-		"typescript": "5.5.4"
-	},
-	"packageManager": "pnpm@9.0.0",
-	"engines": {
-		"node": ">=18"
-	}
+  "name": "designerhaus",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "format": "turbo format"
+  },
+  "devDependencies": {
+    "@workspace/typescript-config": "workspace:*",
+    "@biomejs/biome": "^1.9.4",
+    "turbo": "^2.3.3",
+    "typescript": "5.5.4"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=18"
+  }
 }

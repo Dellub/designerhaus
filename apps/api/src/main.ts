@@ -1,4 +1,6 @@
 import { NestFactory } from '@nestjs/core'
+import { ValidationPipe } from '@nestjs/common'
+
 import { AppModule } from './app.module'
 
 async function bootstrap() {
@@ -6,6 +8,13 @@ async function bootstrap() {
   await app.listen(process.env.NESTJS_API_PORT ?? 8080, () => {
     console.log('API listening on port 8080')
   })
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+    }),
+  )
 }
 
 bootstrap()

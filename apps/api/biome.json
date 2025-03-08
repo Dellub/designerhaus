@@ -1,0 +1,8 @@
+{
+  "extends": ["@workspace/biome-config/biome"],
+  "javascript": {
+    "parser": {
+      "unsafeParameterDecoratorsEnabled": true
+    }
+  }
+}
