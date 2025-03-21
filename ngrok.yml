@@ -1,0 +1,16 @@
+version: 3
+
+agent:
+  connect_url: nicely-polished-condor.ngrok-free.app
+  authtoken: 1jQH5jDHvKzqr35ioDQayw4NRlO_33MAGXkBh7Xo7fSZgwDYH
+  api_key: ak_2EJwa4K8WNXH0QwJSOKrYw3Gip2
+
+endpoints:
+  - name: demo-tls
+    url: 'tls://nicely-polished-condor.ngrok-free.app'
+    upstream:
+      url: 9000
+    agent_tls_termination:
+      server_certificate: /your-cert.crt
+      server_private_key: /your-key.key
+

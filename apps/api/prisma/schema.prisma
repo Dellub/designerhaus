@@ -12,3 +12,35 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum AuthType {
+  email
+  google
+}
+
+model User {
+  id             Int            @id @default(autoincrement())
+  firstName      String?
+  lastName       String?
+  username       String?
+  email          String         @unique
+  password       String
+  status         String         @default("active")
+  phone          String?
+  gender         String?
+  bio            String?
+  profilePicUrl  String?
+  createdAt      DateTime       @default(now())
+  verifiedAt     DateTime?
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
+  lastLoggedInAt DateTime?
+  authType       AuthType       @default(email)
+  roles          Role[]         @relation("UserRoles")
+}
+
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  users User[] @relation("UserRoles")
+}

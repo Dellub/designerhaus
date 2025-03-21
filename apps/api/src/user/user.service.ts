@@ -1,26 +1,358 @@
 import { Injectable } from '@nestjs/common'
-import type { CreateUserDto } from './dto/create-user.dto'
-import type { UpdateUserDto } from './dto/update-user.dto'
+import {
+  ConflictException,
+  InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common/exceptions'
+import generator from 'generate-password-ts'
+import _ from 'lodash'
+import { AvatarGenerator } from 'random-avatar-generator'
+import type { AuthService } from '../auth/auth.service'
+import type { EmailService } from '../email/email.service'
+import { Roles, type UserById } from '../interfaces'
+import type { PrismaService } from '../prisma/prisma.service'
+import type { UserLoginResponse } from '../user/user.types'
+import type {
+  UserCreateDtoType,
+  UserFindAllDtoType,
+  UserLoginDtoType,
+  UserResetPasswordType,
+  UserSignupDtoType,
+  UserUpdateDtoType,
+} from './user.dto'
 
 @Injectable()
 export class UserService {
-  create(createUserDto: CreateUserDto) {
-    return 'This action adds a new user'
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly authService: AuthService,
+    private readonly emailService: EmailService,
+  ) {}
+
+  async signup(signupDto: UserSignupDtoType) {
+    const payload = {
+      ...signupDto,
+      roles: [Roles.User],
+    } as UserCreateDtoType
+    const userJwt = await this.create(payload)
+    await this.emailService.sendUserWelcome(userJwt.user, userJwt.jwt.accessToken)
+    return userJwt
   }
 
-  findAll() {
-    return 'This action returns all user'
+  async login(userLoginDto: UserLoginDtoType): Promise<UserLoginResponse> {
+    const user = await this.prismaService.user.findFirst({
+      where: {
+        email: userLoginDto.email,
+        deletedAt: null,
+      },
+      include: {
+        roles: true,
+      },
+    })
+
+    // check password and user
+    const verified = (await this.authService.verifyPassword(userLoginDto.password, user?.password ?? '')) && !!user
+
+    if (!verified) {
+      throw new UnauthorizedException('Invalid login')
+    }
+    // retrieve JWT
+    const jwt = this.authService.getJwt(user)
+
+    // update user lastLoggedInAt
+    await this.prismaService.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        lastLoggedInAt: new Date(),
+      },
+    })
+
+    // return login response
+    return {
+      jwt,
+      user,
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`
+  async create(userCreateDto: UserCreateDtoType) {
+    const existingUser = await this.prismaService.user.findFirst({
+      where: {
+        email: userCreateDto.email,
+        deletedAt: null,
+      },
+    })
+    if (existingUser) {
+      throw new ConflictException('Email is already taken, please try again.')
+    }
+
+    if (userCreateDto.firstName) {
+      userCreateDto.firstName = _.capitalize(userCreateDto.firstName)
+    }
+
+    if (userCreateDto.lastName) {
+      userCreateDto.lastName = _.capitalize(userCreateDto.lastName)
+    }
+
+    if (userCreateDto.password) {
+      userCreateDto.password = await this.authService.encryptPassword(userCreateDto.password)
+    }
+    userCreateDto.email = userCreateDto.email.toLowerCase()
+
+    // if roles was passed, assign them appropriately
+    let roleConnections: { id: number }[] = []
+    if (userCreateDto.roles && userCreateDto.roles.length > 0) {
+      const roles = await this.prismaService.role.findMany({
+        where: {
+          name: { in: userCreateDto.roles },
+        },
+      })
+      roleConnections = roles.map((role) => ({ id: role.id }))
+    } else {
+      // otherwise, assign a default User role
+      const role = await this.prismaService.role.findFirst({
+        where: {
+          name: 'User',
+        },
+      })
+      if (role) {
+        roleConnections = [{ id: role.id }]
+      }
+    }
+
+    // assign a random profile avatar picture if profile pic is not provided
+    const generator = new AvatarGenerator()
+    if (!userCreateDto.profilePicUrl) {
+      userCreateDto.profilePicUrl = await generator.generateRandomAvatar(userCreateDto.firstName)
+    }
+
+    // create
+    try {
+      const { ...userData } = userCreateDto
+      const user = await this.prismaService.user.create({
+        data: {
+          ...userData,
+          roles: {
+            connect: roleConnections,
+          },
+        },
+      })
+      const jwt = this.authService.getJwt(user)
+      return { user, jwt }
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    } catch (error: any) {
+      if (error.constraint === 'user__email__uq') {
+        throw new ConflictException(error.message)
+      }
+
+      throw new InternalServerErrorException(error.message)
+    }
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`
+  async update(userUpdateDto: UserUpdateDtoType, requestUser: UserById) {
+    if (!requestUser.roles?.some((r) => r.name === Roles.Admin) && userUpdateDto.id !== requestUser.id) {
+      throw new UnauthorizedException('You cannot update other user')
+    }
+    const user = await this.prismaService.user.findFirstOrThrow({
+      where: {
+        id: userUpdateDto.id,
+        deletedAt: null,
+      },
+      include: {
+        roles: true,
+      },
+    })
+    // normalize form values appropriately
+    if (userUpdateDto.firstName) {
+      userUpdateDto.firstName = _.capitalize(userUpdateDto.firstName)
+    }
+    if (userUpdateDto.lastName) {
+      userUpdateDto.lastName = _.capitalize(userUpdateDto.lastName)
+    }
+    if (userUpdateDto.password) {
+      userUpdateDto.password = await this.authService.encryptPassword(userUpdateDto.password)
+    }
+    if (userUpdateDto.email) {
+      userUpdateDto.email = userUpdateDto.email.toLowerCase()
+    }
+    // assign roles appropriately (TODO: simplify this mess)
+    let roleConnections: { id: number }[] = []
+    let roleDisconnections: { id: number }[] = []
+    if (
+      requestUser?.roles?.some((r) => r.name === Roles.Admin) &&
+      userUpdateDto.roles &&
+      userUpdateDto.roles.length > 0
+    ) {
+      const allRoles = await this.prismaService.role.findMany()
+      const rolesToConnect = userUpdateDto.roles.filter(
+        (roleName) => !user.roles.some((role) => role.name === roleName),
+      )
+      roleConnections = allRoles
+        .filter((role) => rolesToConnect.includes(role.name as Roles))
+        .map((role) => ({ id: role.id }))
+      const rolesToDisconnect = user.roles
+        .filter((role) => !(userUpdateDto.roles || []).includes(role.name as Roles))
+        .map((role) => ({ id: role.id }))
+      roleDisconnections = allRoles
+        .filter((role) => rolesToDisconnect.map((r) => r.id).includes(role.id))
+        .map((role) => ({ id: role.id }))
+      const roles = await this.prismaService.role.findMany({
+        where: {
+          name: { in: userUpdateDto.roles },
+        },
+      })
+      roleConnections = roles.map((role) => ({ id: role.id }))
+    }
+    try {
+      const updatedUser = await this.prismaService.user.update({
+        where: {
+          id: userUpdateDto.id,
+        },
+        data: {
+          ...userUpdateDto,
+          roles: {
+            connect: roleConnections,
+            disconnect: roleDisconnections,
+          },
+        },
+      })
+      return updatedUser
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    } catch (error: any) {
+      if (error.constraint === 'user__email__uq') {
+        throw new ConflictException(error.message)
+      }
+
+      throw new InternalServerErrorException(error.message)
+    }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`
+  async findAll(opts: UserFindAllDtoType) {
+    const records = await this.prismaService.user.findMany({
+      skip: (opts.page - 1) * opts.perPage,
+      take: opts.perPage,
+      include: {
+        roles: true,
+      },
+      where: { deletedAt: null },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    })
+    const total = await this.prismaService.user.count()
+    const lastPage = Math.ceil(total / opts.perPage)
+    return {
+      records,
+      total,
+      currentPage: opts.page,
+      lastPage,
+      perPage: opts.perPage,
+    }
+  }
+
+  async findById(id: number) {
+    return this.prismaService.user.findUnique({
+      where: { id, deletedAt: null },
+      include: {
+        roles: true,
+      },
+    })
+  }
+
+  async remove(id: number | number[], requestUser: UserById) {
+    let ids: number[] = []
+    if (Array.isArray(id)) {
+      ids = id
+    } else if (typeof id === 'number') {
+      ids = [id]
+    }
+    const output = []
+    for (const id of ids) {
+      const user = await this.findById(id)
+      if (!requestUser.roles?.some((r) => r.name === 'Admin') && user?.id !== requestUser.id) {
+        throw new UnauthorizedException('You cannot update other users')
+      }
+      output.push(
+        // @ts-ignore
+        await this.prismaService.user.update({
+          where: {
+            id,
+          },
+          data: {
+            deletedAt: new Date(),
+          },
+        }),
+      )
+    }
+    return output
+  }
+
+  async findByAccessToken(accessToken: string) {
+    try {
+      // verify the JWT token and decode its payload
+      const decoded = await this.authService.decodeJwtToken(accessToken)
+      // use the decoded.sub as the user's identifier to fetch the user
+      const user = await this.findById(decoded.sub)
+      if (!user) {
+        throw new NotFoundException('User not found')
+      }
+      const jwt = this.authService.getJwt(user)
+      return { user, jwt }
+    } catch (error) {
+      throw new UnauthorizedException('Access token is invalid or expired. Please login again.')
+    }
+  }
+
+  async verifyAccessToken(accessToken: string) {
+    const userJwt = await this.findByAccessToken(accessToken)
+    if (userJwt) {
+      await this.prismaService.user.update({
+        where: {
+          id: userJwt.user.id,
+        },
+        data: {
+          verifiedAt: new Date(),
+        },
+      })
+      return userJwt
+    }
+    throw new UnauthorizedException('invalid access token')
+  }
+
+  async resetPassword(resetPasswordDto: UserResetPasswordType) {
+    // if email matches, set a random password
+    const user = await this.prismaService.user.findUnique({
+      where: {
+        email: resetPasswordDto.email,
+        deletedAt: null,
+      },
+    })
+    if (!user) {
+      throw new NotFoundException('User not found')
+    }
+
+    // generate random password
+    const randomPassword = generator.generate({
+      length: 10,
+      numbers: true,
+    })
+
+    // update user with random password
+    await this.prismaService.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        password: await this.authService.encryptPassword(randomPassword),
+      },
+    })
+
+    // send email with random password
+    await this.emailService.sendResetPassword(user, randomPassword)
+    console.info('Password reset for', user.email, 'to', randomPassword)
+
+    return 'hello'
   }
 }
