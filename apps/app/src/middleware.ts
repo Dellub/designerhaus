@@ -1,9 +1,10 @@
+import { getCookie } from 'cookies-next'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
   console.log('request', request)
-  const accessToken = request.cookies.get('designerHaus:accessToken')
+  const accessToken = getCookie('designerHaus:accessToken')
 
   const urlAuthLogin = request.nextUrl.clone()
   urlAuthLogin.pathname = '/auth/login'

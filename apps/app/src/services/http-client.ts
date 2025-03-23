@@ -9,8 +9,7 @@ const CancelToken = axios.CancelToken
 const source = CancelToken.source()
 
 export const apiHttpClient = axios.create({
-  baseURL: 'https://rnuyb-45-175-208-124.a.free.pinggy.link',
-  // baseURL: `${process.env.NEXT_PUBLIC_URL_API}`,
+  baseURL: `${process.env.NEXT_PUBLIC_URL_API}`,
   signal: controller.signal,
   cancelToken: source.token,
 })
