@@ -1,6 +1,4 @@
 import mailerConfig from '@/config/mailer'
-import { roleRoutes } from '@/modules/role/roles.route'
-import { roleSchemas } from '@/modules/role/roles.schema'
 import { userRoutes } from '@/modules/user/user.route'
 import { userSchemas } from '@/modules/user/user.schema'
 import fMailer from '@dzangolab/fastify-mailer'
@@ -56,16 +54,14 @@ const start = async () => {
     fastify.addSchema(schema)
   }
 
-  for (const schema of [...roleSchemas]) {
-    fastify.addSchema(schema)
-  }
-
   fastify.get('/healthcheck', (req, res) => {
     res.send({ message: 'Success' })
   })
 
   fastify.register(userRoutes, { prefix: 'users' })
-  fastify.register(roleRoutes, { prefix: 'roles' })
+
+  console.log('envValidation', envValidation)
+  console.log('PORT', envValidation.PORT)
 
   try {
     await fastify.listen({ port: envValidation.PORT || 9000, host: '0.0.0.0' })
