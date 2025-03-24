@@ -67,7 +67,7 @@ const start = async () => {
   fastify.register(roleRoutes, { prefix: 'roles' })
 
   try {
-    await fastify.listen({ port: 9000, host: '0.0.0.0' })
+    await fastify.listen({ port: process.env.PORT || 9000, host: '0.0.0.0' })
   } catch (err) {
     fastify.log.error(err)
     process.exit(1)
