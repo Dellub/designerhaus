@@ -8,6 +8,7 @@ import fCookie from '@fastify/cookie'
 import cors from '@fastify/cors'
 import fjwt, { type FastifyJWT } from '@fastify/jwt'
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify'
+import { envValidation } from 'types'
 
 const fastify = Fastify({ logger: true })
 
@@ -67,7 +68,7 @@ const start = async () => {
   fastify.register(roleRoutes, { prefix: 'roles' })
 
   try {
-    await fastify.listen({ port: process.env.PORT || 9000, host: '0.0.0.0' })
+    await fastify.listen({ port: envValidation.PORT || 9000, host: '0.0.0.0' })
   } catch (err) {
     fastify.log.error(err)
     process.exit(1)
