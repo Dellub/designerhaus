@@ -1,3 +1,4 @@
+import type { FastifyInstance, FastifyRequest } from 'fastify'
 import {
   createUser,
   forgotPassword,
@@ -7,9 +8,8 @@ import {
   logout,
   newPassword,
   validateCode,
-} from '@/modules/user/user.controller'
-import { $ref, type ForgotPasswordUserInput } from '@/modules/user/user.schema'
-import type { FastifyInstance, FastifyRequest } from 'fastify'
+} from './user.controller'
+import { $ref, type ForgotPasswordUserInput } from './user.schema'
 
 export async function userRoutes(fastify: FastifyInstance) {
   fastify.get(

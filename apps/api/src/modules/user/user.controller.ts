@@ -1,14 +1,14 @@
 import { randomInt } from 'node:crypto'
+import * as argon2 from 'argon2'
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
+import prisma from '../../utils/prisma'
 import type {
   CreateUserInput,
   ForgotPasswordUserInput,
   LoginUserInput,
   NewPasswordSchemaUserInput,
   ValidateCodeSchemaUserInput,
-} from '@/modules/user/user.schema'
-import prisma from '@/utils/prisma'
-import * as argon2 from 'argon2'
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
+} from './user.schema'
 
 const SALT_ROUNDS = 10
 
@@ -123,32 +123,32 @@ export async function forgotPassword(
     },
   })
 
-  const { mailer } = fastify
+  // const { mailer } = fastify
 
-  mailer.sendMail(
-    {
-      to: 'rodrigocgodoy@hotmail.com',
-      subject: 'Seu código de recuperação',
-      text: `Seu código de recuperação é: ${code}`,
-    },
-    (errors, info) => {
-      if (errors) {
-        console.log('errors', errors)
-        fastify.log.error(errors)
+  // mailer.sendMail(
+  //   {
+  //     to: 'rodrigocgodoy@hotmail.com',
+  //     subject: 'Seu código de recuperação',
+  //     text: `Seu código de recuperação é: ${code}`,
+  //   },
+  //   (errors, info) => {
+  //     if (errors) {
+  //       console.log('errors', errors)
+  //       fastify.log.error(errors)
 
-        reply.status(500).send({
-          title: 'Algo deu errado',
-          message: 'Por algum motivo não foi possivel enviar um email',
-        })
-      }
+  //       reply.status(500).send({
+  //         title: 'Algo deu errado',
+  //         message: 'Por algum motivo não foi possivel enviar um email',
+  //       })
+  //     }
 
-      console.log('info:', info)
+  //     console.log('info:', info)
 
-      reply.status(200).send({
-        message: 'Email successfully sent',
-      })
-    },
-  )
+  //     reply.status(200).send({
+  //       message: 'Email successfully sent',
+  //     })
+  //   },
+  // )
 }
 
 export async function validateCode(

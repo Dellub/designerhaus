@@ -1,12 +1,12 @@
-import mailerConfig from '@/config/mailer'
-import { userRoutes } from '@/modules/user/user.route'
-import { userSchemas } from '@/modules/user/user.schema'
-import fMailer from '@dzangolab/fastify-mailer'
+// import fMailer from '@dzangolab/fastify-mailer'
 import fCookie from '@fastify/cookie'
 import cors from '@fastify/cors'
 import fjwt, { type FastifyJWT } from '@fastify/jwt'
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify'
-import { envValidation } from 'types'
+import { envValidation } from '../types'
+import { userRoutes } from './modules/user/user.route'
+import { userSchemas } from './modules/user/user.schema'
+// import mailerConfig from '@/config/mailer'
 
 const fastify = Fastify({ logger: true })
 
@@ -25,7 +25,7 @@ const start = async () => {
   })
 
   // mailer
-  fastify.register(fMailer, mailerConfig)
+  // fastify.register(fMailer, mailerConfig)
 
   // cookies
   fastify.register(fCookie, {

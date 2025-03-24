@@ -36,6 +36,8 @@ const envSchema = z.object({
 // Tipo inferido do schema
 export type EnvVars = z.infer<typeof envSchema>
 
+console.log('process.env', process.env)
+
 // Validação
 export const envValidation = envSchema.parse(process.env)
 

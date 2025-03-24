@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "tsx watch src/app.ts",
     "build": "tsc --build",
-    "start": "node dist/app.js"
+    "start": "node --env-file-if-exists=.env dist/src/app.js"
   },
   "dependencies": {
     "@dzangolab/fastify-mailer": "^0.79.0",
