@@ -7,12 +7,11 @@ import { Button } from '@workspace/ui/components/button'
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@workspace/ui/components/form'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@workspace/ui/components/input-otp'
 import { Spinner } from '@workspace/ui/components/spinner'
-import { redirect, useSearchParams } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import type { z } from 'zod'
 
 export default function Page() {
-  const searchParams = useSearchParams()
   const { mutateAsync: validateCodeUser, data } = useValidateCodeMutation()
 
   const form = useForm<z.infer<typeof forgotPasswordCodeSchema>>({
@@ -30,18 +29,21 @@ export default function Page() {
 
   async function onSubmit(values: z.infer<typeof forgotPasswordCodeSchema>) {
     const { code } = values
-    const email = localStorage.getItem('forgotPassword:email')
 
     localStorage.setItem('forgotPassword:code', code)
 
     const data = {
-      email,
+      email: getEmail(),
       code,
     }
 
     await validateCodeUser(data)
 
     redirect('/auth/forgot-password/new')
+  }
+
+  function getEmail() {
+    if (typeof window !== 'undefined') return window?.localStorage.getItem('forgotPassword:email') ?? ''
   }
 
   return (
@@ -52,8 +54,8 @@ export default function Page() {
           <div className="flex flex-col items-center">
             <h2 className="text-center text-[#1c2024] text-xl font-semibold font-manrope">Esqueceu sua senha?</h2>
             <p className="text-center text-[#667085] text-sm font-normal font-inter">
-              Enviamos um e-mail para {searchParams.get('email')}. Verifique sua caixa de entrada e siga as instruções
-              para redefinir sua senha.
+              Enviamos um e-mail para {getEmail()}. Verifique sua caixa de entrada e siga as instruções para redefinir
+              sua senha.
             </p>
           </div>
 

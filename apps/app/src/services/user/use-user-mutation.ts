@@ -5,6 +5,10 @@ import { redirect } from 'next/navigation'
 import { apiHttpClient, apiInstance } from '../http-client'
 import { baseQueryOptions } from '../query-client'
 
+interface UserLoginResponse {
+  accessToken?: string
+}
+
 export function useLoginMutation() {
   return useMutation({
     mutationKey: ['user-login'],
@@ -12,7 +16,7 @@ export function useLoginMutation() {
     mutationFn: async (payload: any) => {
       console.log(payload)
 
-      const result = await apiInstance({
+      const result = await apiInstance<UserLoginResponse>({
         url: '/users/auth/login',
         method: 'POST',
         data: payload,

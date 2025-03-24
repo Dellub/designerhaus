@@ -8,14 +8,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@workspace/ui/components/input'
 import { Spinner } from '@workspace/ui/components/spinner'
 import { Eye, EyeOff } from 'lucide-react'
-import { redirect, useSearchParams } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import type { z } from 'zod'
 
 export default function Page() {
-  const searchParams = useSearchParams()
   const { mutateAsync: validateCodeUser, data } = useNewPasswordMutation()
 
   const form = useForm<z.infer<typeof forgotPasswordNewSchema>>({
@@ -36,11 +35,10 @@ export default function Page() {
 
   async function onSubmit(values: z.infer<typeof forgotPasswordNewSchema>) {
     const { password } = values
-    const email = localStorage.getItem('forgotPassword:email')
     const code = localStorage.getItem('forgotPassword:code')
 
     const data = {
-      email,
+      email: getEmail(),
       code,
       password,
     }
@@ -54,6 +52,10 @@ export default function Page() {
     redirect('/auth/login')
   }
 
+  function getEmail() {
+    if (typeof window !== 'undefined') return window?.localStorage.getItem('forgotPassword:email') ?? ''
+  }
+
   return (
     <main className="w-screen overflow-x-hidden min-h-screen flex flex-col justify-center items-center gap-16 py-10 px-4">
       <h1 className="text-[#4ba3fb] text-3xl font-bold font-manrope leading-none">DesignerHaus</h1>
@@ -62,8 +64,8 @@ export default function Page() {
           <div className="flex flex-col items-center">
             <h2 className="text-center text-[#1c2024] text-xl font-semibold font-manrope">Esqueceu sua senha?</h2>
             <p className="text-center text-[#667085] text-sm font-normal font-inter">
-              Enviamos um e-mail para {searchParams.get('email')}. Verifique sua caixa de entrada e siga as instruções
-              para redefinir sua senha.
+              Enviamos um e-mail para {getEmail()}. Verifique sua caixa de entrada e siga as instruções para redefinir
+              sua senha.
             </p>
           </div>
 

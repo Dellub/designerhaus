@@ -1,8 +1,0 @@
-{
-  "extends": "@workspace/typescript-config/nestjs.json",
-  "compilerOptions": {
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  }
-}
